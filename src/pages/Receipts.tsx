@@ -25,9 +25,9 @@ interface ReceiptData {
 }
 
 export default function Receipts() {
-  const { employees, isLoading: employeesLoading } = useEmployees();
-  const { advances, isLoading: advancesLoading } = useAdvances();
-  const { payments, isLoading: paymentsLoading } = useSalaryPayments();
+  const { data: employees = [], isLoading: employeesLoading } = useEmployees();
+  const { data: advances = [], isLoading: advancesLoading } = useAdvances();
+  const { data: payments = [], isLoading: paymentsLoading } = useSalaryPayments();
 
   const currentDate = new Date();
   const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth() + 1);

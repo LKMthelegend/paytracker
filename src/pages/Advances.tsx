@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useEmployees } from "@/hooks/useEmployees";
-import { useAdvances } from "@/hooks/useAdvances";
+import { useAdvances, useCreateAdvance, useUpdateAdvance, useDeleteAdvance } from "@/hooks/useAdvances";
 import { Advance, Employee, formatCurrency, formatDate, getMonthName, ADVANCE_STATUS, MONTHS } from "@/types";
 import { AdvanceForm } from "@/components/advances/AdvanceForm";
 import { Button } from "@/components/ui/button";
@@ -16,8 +16,11 @@ import { Plus, Search, Wallet, MoreVertical, CheckCircle, XCircle, Trash2, Clock
 import { toast } from "sonner";
 
 export default function Advances() {
-  const { employees, isLoading: employeesLoading } = useEmployees();
-  const { advances, isLoading: advancesLoading, addAdvance, updateAdvance, deleteAdvance } = useAdvances();
+  const { data: employees = [], isLoading: employeesLoading } = useEmployees();
+  const { data: advances = [], isLoading: advancesLoading } = useAdvances();
+  const addAdvance = useCreateAdvance();
+  const updateAdvance = useUpdateAdvance();
+  const deleteAdvance = useDeleteAdvance();
 
   const currentDate = new Date();
   const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth() + 1);
@@ -71,7 +74,7 @@ export default function Advances() {
   const handleFormSubmit = async (data: Advance) => {
     try {
       if (selectedAdvance) {
-        await updateAdvance.mutateAsync(data);
+        await updateAdvance.mutateAsync({ id: selectedAdvance.id, data });
         toast.success("Avance mise à jour");
       } else {
         await addAdvance.mutateAsync(data);
@@ -86,10 +89,11 @@ export default function Advances() {
   const handleApprove = async (advance: Advance) => {
     try {
       await updateAdvance.mutateAsync({
-        ...advance,
-        status: 'approved',
-        approvalDate: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
+        id: advance.id,
+        data: {
+          status: 'approved',
+          approvalDate: new Date().toISOString(),
+        }
       });
       toast.success("Avance approuvée");
     } catch (error) {
@@ -100,9 +104,10 @@ export default function Advances() {
   const handleReject = async (advance: Advance) => {
     try {
       await updateAdvance.mutateAsync({
-        ...advance,
-        status: 'rejected',
-        updatedAt: new Date().toISOString(),
+        id: advance.id,
+        data: {
+          status: 'rejected',
+        }
       });
       toast.success("Avance rejetée");
     } catch (error) {

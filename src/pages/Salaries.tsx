@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useEmployees } from "@/hooks/useEmployees";
 import { useAdvances } from "@/hooks/useAdvances";
-import { useSalaryPayments } from "@/hooks/useSalaryPayments";
+import { useSalaryPayments, useRecordSalaryPayment, useCalculateMonthlySalary } from "@/hooks/useSalaryPayments";
 import { Employee, SalaryPayment, formatCurrency, getMonthName, MONTHS, PAYMENT_STATUS } from "@/types";
 import { SalaryPaymentForm } from "@/components/salaries/SalaryPaymentForm";
 import { Button } from "@/components/ui/button";
@@ -15,9 +15,11 @@ import { CreditCard, TrendingUp, TrendingDown, Search, Calculator, CheckCircle, 
 import { toast } from "sonner";
 
 export default function Salaries() {
-  const { employees, isLoading: employeesLoading } = useEmployees();
-  const { advances } = useAdvances();
-  const { payments, addPayment, updatePayment, isLoading: paymentsLoading } = useSalaryPayments();
+  const { data: employees = [], isLoading: employeesLoading } = useEmployees();
+  const { data: advances = [] } = useAdvances();
+  const { data: payments = [], isLoading: paymentsLoading } = useSalaryPayments();
+  const recordPayment = useRecordSalaryPayment();
+  const calculateSalary = useCalculateMonthlySalary();
 
   const currentDate = new Date();
   const [selectedMonth, setSelectedMonth] = useState(currentDate.getMonth() + 1);
@@ -115,9 +117,17 @@ export default function Salaries() {
       );
       
       if (existing) {
-        await updatePayment.mutateAsync(payment);
+        await recordPayment.mutateAsync({
+          paymentId: existing.id,
+          amount: payment.amountPaid - existing.amountPaid,
+          notes: payment.notes
+        });
       } else {
-        await addPayment.mutateAsync(payment);
+        await calculateSalary.mutateAsync({
+          employee: selectedEmployee!,
+          month: payment.month,
+          year: payment.year
+        });
       }
       
       toast.success("Paiement enregistré avec succès");
@@ -340,7 +350,7 @@ export default function Salaries() {
                  p.year === selectedYear
           )}
           totalAdvances={getAdvancesForEmployee(selectedEmployee.id)}
-          isLoading={addPayment.isPending || updatePayment.isPending}
+          isLoading={recordPayment.isPending || calculateSalary.isPending}
         />
       )}
     </div>
