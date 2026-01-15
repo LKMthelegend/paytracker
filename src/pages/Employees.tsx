@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useEmployees } from "@/hooks/useEmployees";
+import { useEmployees, useCreateEmployee, useUpdateEmployee, useDeleteEmployee } from "@/hooks/useEmployees";
 import { Employee, DEPARTMENTS, EMPLOYEE_STATUS } from "@/types";
 import { EmployeeForm } from "@/components/employees/EmployeeForm";
 import { EmployeeCard } from "@/components/employees/EmployeeCard";
@@ -16,7 +16,10 @@ import { toast } from "sonner";
 const ITEMS_PER_PAGE = 12;
 
 export default function Employees() {
-  const { employees, isLoading, addEmployee, updateEmployee, deleteEmployee } = useEmployees();
+  const { data: employees = [], isLoading } = useEmployees();
+  const addEmployee = useCreateEmployee();
+  const updateEmployee = useUpdateEmployee();
+  const deleteEmployee = useDeleteEmployee();
   
   // Dialog states
   const [formOpen, setFormOpen] = useState(false);
@@ -86,7 +89,7 @@ export default function Employees() {
   const handleFormSubmit = async (data: Employee) => {
     try {
       if (selectedEmployee) {
-        await updateEmployee.mutateAsync(data);
+        await updateEmployee.mutateAsync({ id: selectedEmployee.id, data });
         toast.success("Employé mis à jour avec succès");
       } else {
         await addEmployee.mutateAsync(data);
