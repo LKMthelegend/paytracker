@@ -1,16 +1,25 @@
 import { useState, useRef } from "react";
-import { Download, Upload, FileSpreadsheet, AlertCircle, CheckCircle2, FileDown } from "lucide-react";
+import { Download, Upload, FileSpreadsheet, AlertCircle, CheckCircle2, FileDown, Database, RotateCcw, Trash2 } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useEmployees, useCreateEmployee } from "@/hooks/useEmployees";
+import { useAdvances } from "@/hooks/useAdvances";
+import { useSalaryPayments } from "@/hooks/useSalaryPayments";
 import { exportEmployeesToCSV, downloadCSV, parseCSVContent, generateSampleCSV } from "@/lib/csvUtils";
+import { exportAllData, importData, clearAllData } from "@/lib/db";
 import { toast } from "@/hooks/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function DataManagement() {
   const { data: employees = [], isLoading } = useEmployees();
+  const { data: advances = [] } = useAdvances();
+  const { data: payments = [] } = useSalaryPayments();
   const createEmployee = useCreateEmployee();
+  const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const jsonInputRef = useRef<HTMLInputElement>(null);
   
   const [importStatus, setImportStatus] = useState<{
     type: 'idle' | 'success' | 'error' | 'partial';
@@ -18,6 +27,8 @@ export default function DataManagement() {
     details?: string[];
   }>({ type: 'idle' });
   const [isImporting, setIsImporting] = useState(false);
+  const [isExportingJson, setIsExportingJson] = useState(false);
+  const [isImportingJson, setIsImportingJson] = useState(false);
 
   const handleExportCSV = () => {
     if (employees.length === 0) {
@@ -57,7 +68,6 @@ export default function DataManagement() {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // Reset input
     event.target.value = '';
 
     if (!file.name.endsWith('.csv')) {
@@ -86,7 +96,6 @@ export default function DataManagement() {
         return;
       }
 
-      // Import employees one by one
       let successCount = 0;
       const importErrors: string[] = [];
 
@@ -99,7 +108,6 @@ export default function DataManagement() {
         }
       }
 
-      // Combine parsing warnings with import errors
       const allWarnings = [...(result.errors || []), ...importErrors];
 
       if (successCount === result.data!.length) {
@@ -133,11 +141,149 @@ export default function DataManagement() {
     }
   };
 
+  // JSON Backup/Restore Functions
+  const handleExportJSON = async () => {
+    setIsExportingJson(true);
+    try {
+      const allData = await exportAllData();
+      const jsonContent = JSON.stringify(allData, null, 2);
+      const blob = new Blob([jsonContent], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      
+      const date = new Date().toISOString().split('T')[0];
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `payrollpro_backup_${date}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      const totalRecords = allData.employees.length + allData.advances.length + 
+                          allData.salaryPayments.length + allData.receipts.length;
+      
+      toast({
+        title: "Sauvegarde réussie",
+        description: `${totalRecords} enregistrement(s) exporté(s) au format JSON.`
+      });
+    } catch (error) {
+      toast({
+        title: "Erreur d'export",
+        description: error instanceof Error ? error.message : "Erreur inconnue",
+        variant: "destructive"
+      });
+    } finally {
+      setIsExportingJson(false);
+    }
+  };
+
+  const handleImportJSONClick = () => {
+    jsonInputRef.current?.click();
+  };
+
+  const handleJSONFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    event.target.value = '';
+
+    if (!file.name.endsWith('.json')) {
+      toast({
+        title: "Format invalide",
+        description: "Veuillez sélectionner un fichier JSON (.json)",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    setIsImportingJson(true);
+    try {
+      const content = await file.text();
+      const data = JSON.parse(content);
+
+      // Validate structure
+      if (!data || typeof data !== 'object') {
+        throw new Error("Format de fichier invalide");
+      }
+
+      const hasValidData = data.employees || data.advances || data.salaryPayments || data.receipts;
+      if (!hasValidData) {
+        throw new Error("Aucune donnée valide trouvée dans le fichier");
+      }
+
+      await importData(data);
+      
+      // Invalidate all queries to refresh data
+      queryClient.invalidateQueries({ queryKey: ["employees"] });
+      queryClient.invalidateQueries({ queryKey: ["advances"] });
+      queryClient.invalidateQueries({ queryKey: ["salaryPayments"] });
+      queryClient.invalidateQueries({ queryKey: ["receipts"] });
+
+      const importedCount = {
+        employees: data.employees?.length || 0,
+        advances: data.advances?.length || 0,
+        payments: data.salaryPayments?.length || 0,
+        receipts: data.receipts?.length || 0
+      };
+
+      toast({
+        title: "Restauration réussie",
+        description: `Importé: ${importedCount.employees} employés, ${importedCount.advances} avances, ${importedCount.payments} paiements, ${importedCount.receipts} reçus.`
+      });
+
+      setImportStatus({
+        type: 'success',
+        message: 'Restauration JSON réussie',
+        details: [
+          `${importedCount.employees} employé(s)`,
+          `${importedCount.advances} avance(s)`,
+          `${importedCount.payments} paiement(s) de salaire`,
+          `${importedCount.receipts} reçu(s)`
+        ]
+      });
+
+    } catch (error) {
+      toast({
+        title: "Erreur de restauration",
+        description: error instanceof Error ? error.message : "Erreur inconnue",
+        variant: "destructive"
+      });
+    } finally {
+      setIsImportingJson(false);
+    }
+  };
+
+  const handleClearAllData = async () => {
+    try {
+      await clearAllData();
+      
+      queryClient.invalidateQueries({ queryKey: ["employees"] });
+      queryClient.invalidateQueries({ queryKey: ["advances"] });
+      queryClient.invalidateQueries({ queryKey: ["salaryPayments"] });
+      queryClient.invalidateQueries({ queryKey: ["receipts"] });
+
+      toast({
+        title: "Données supprimées",
+        description: "Toutes les données ont été effacées avec succès."
+      });
+
+      setImportStatus({ type: 'idle' });
+    } catch (error) {
+      toast({
+        title: "Erreur",
+        description: error instanceof Error ? error.message : "Erreur inconnue",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const totalRecords = employees.length + advances.length + payments.length;
+
   return (
     <div className="space-y-6 animate-fade-in">
       <div className="page-header">
         <h1 className="page-title">Gestion des Données</h1>
-        <p className="page-description">Import, export et sauvegarde des données employés</p>
+        <p className="page-description">Import, export et sauvegarde des données</p>
       </div>
 
       {/* Status Alert */}
@@ -171,13 +317,141 @@ export default function DataManagement() {
         </Alert>
       )}
 
+      {/* JSON Backup Section */}
       <div className="grid gap-6 md:grid-cols-2">
-        {/* Export Card */}
+        <Card className="border-primary/20 bg-primary/5">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Database className="h-5 w-5 text-primary" />
+              Sauvegarde Complète (JSON)
+            </CardTitle>
+            <CardDescription>
+              Exportez toutes vos données en un seul fichier JSON
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 gap-3 p-4 bg-background rounded-lg">
+              <div className="text-center">
+                <p className="text-2xl font-bold text-primary">{employees.length}</p>
+                <p className="text-xs text-muted-foreground">Employés</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-bold text-primary">{advances.length}</p>
+                <p className="text-xs text-muted-foreground">Avances</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-bold text-primary">{payments.length}</p>
+                <p className="text-xs text-muted-foreground">Paiements</p>
+              </div>
+              <div className="text-center">
+                <p className="text-2xl font-bold text-primary">{totalRecords}</p>
+                <p className="text-xs text-muted-foreground">Total</p>
+              </div>
+            </div>
+            <Button 
+              onClick={handleExportJSON} 
+              className="w-full"
+              disabled={isExportingJson || totalRecords === 0}
+            >
+              {isExportingJson ? (
+                <>
+                  <span className="animate-spin mr-2">⏳</span>
+                  Export en cours...
+                </>
+              ) : (
+                <>
+                  <Download className="h-4 w-4 mr-2" />
+                  Télécharger la sauvegarde JSON
+                </>
+              )}
+            </Button>
+          </CardContent>
+        </Card>
+
+        <Card className="border-amber-500/20 bg-amber-50/50 dark:bg-amber-950/20">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <RotateCcw className="h-5 w-5 text-amber-600" />
+              Restaurer une Sauvegarde
+            </CardTitle>
+            <CardDescription>
+              Importez un fichier de sauvegarde JSON
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="border-2 border-dashed border-amber-300 dark:border-amber-700 rounded-lg p-6 text-center">
+              <RotateCcw className="h-10 w-10 mx-auto text-amber-600 mb-2" />
+              <p className="text-sm text-muted-foreground mb-4">
+                Les données existantes seront fusionnées avec le fichier importé
+              </p>
+              <input
+                ref={jsonInputRef}
+                type="file"
+                accept=".json"
+                onChange={handleJSONFileChange}
+                className="hidden"
+              />
+              <Button 
+                onClick={handleImportJSONClick} 
+                variant="outline" 
+                className="w-full border-amber-500 text-amber-700 hover:bg-amber-100 dark:hover:bg-amber-900"
+                disabled={isImportingJson}
+              >
+                {isImportingJson ? (
+                  <>
+                    <span className="animate-spin mr-2">⏳</span>
+                    Restauration en cours...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-4 w-4 mr-2" />
+                    Sélectionner un fichier JSON
+                  </>
+                )}
+              </Button>
+            </div>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  className="w-full text-destructive hover:text-destructive hover:bg-destructive/10"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Effacer toutes les données
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Êtes-vous sûr ?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Cette action est irréversible. Toutes les données (employés, avances, paiements, reçus) seront définitivement supprimées.
+                    <br /><br />
+                    <strong>Conseil :</strong> Faites une sauvegarde JSON avant de continuer.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Annuler</AlertDialogCancel>
+                  <AlertDialogAction 
+                    onClick={handleClearAllData}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Supprimer tout
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* CSV Section */}
+      <h2 className="text-lg font-semibold mt-8">Import/Export CSV (Employés uniquement)</h2>
+      <div className="grid gap-6 md:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Download className="h-5 w-5 text-primary" />
-              Exporter les Données
+              Exporter les Employés
             </CardTitle>
             <CardDescription>
               Téléchargez la liste des employés au format CSV
@@ -202,12 +476,11 @@ export default function DataManagement() {
           </CardContent>
         </Card>
 
-        {/* Import Card */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <Upload className="h-5 w-5 text-primary" />
-              Importer des Données
+              Importer des Employés
             </CardTitle>
             <CardDescription>
               Ajoutez des employés à partir d'un fichier CSV
@@ -217,7 +490,7 @@ export default function DataManagement() {
             <div className="border-2 border-dashed border-muted-foreground/25 rounded-lg p-6 text-center">
               <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-2" />
               <p className="text-sm text-muted-foreground mb-4">
-                Fichier CSV avec les colonnes: Matricule, Prénom, Nom, Email, Salaire de base...
+                Fichier CSV avec Matricule, Prénom, Nom, Salaire...
               </p>
               <input
                 ref={fileInputRef}
