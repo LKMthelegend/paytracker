@@ -13,6 +13,7 @@ import {
 import { useLocation } from "react-router-dom";
 import { Wifi, WifiOff } from "lucide-react";
 import { useOnlineStatus } from "@/hooks/useOnlineStatus";
+import { BackupReminderBanner } from "@/components/backup/BackupReminderBanner";
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -52,7 +53,10 @@ export function AppLayout({ children }: AppLayoutProps) {
     <SidebarProvider defaultOpen={true}>
       <div className="flex min-h-screen w-full">
         <AppSidebar />
-        <SidebarInset className="flex-1">
+        <SidebarInset className="flex-1 flex flex-col">
+          {/* Backup Reminder Banner */}
+          <BackupReminderBanner />
+          
           {/* Header */}
           <header className="sticky top-0 z-10 flex h-14 items-center gap-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4">
             <SidebarTrigger className="-ml-1" />

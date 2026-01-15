@@ -1,16 +1,21 @@
 import { useState, useRef } from "react";
-import { Download, Upload, FileSpreadsheet, AlertCircle, CheckCircle2, FileDown, Database, RotateCcw, Trash2 } from "lucide-react";
+import { Download, Upload, FileSpreadsheet, AlertCircle, CheckCircle2, FileDown, Database, RotateCcw, Trash2, Clock, Bell, BellOff } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { useEmployees, useCreateEmployee } from "@/hooks/useEmployees";
 import { useAdvances } from "@/hooks/useAdvances";
 import { useSalaryPayments } from "@/hooks/useSalaryPayments";
+import { useBackupReminder } from "@/hooks/useBackupReminder";
 import { exportEmployeesToCSV, downloadCSV, parseCSVContent, generateSampleCSV } from "@/lib/csvUtils";
 import { exportAllData, importData, clearAllData } from "@/lib/db";
 import { toast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
+import { formatDate } from "@/types";
 
 export default function DataManagement() {
   const { data: employees = [], isLoading } = useEmployees();
@@ -18,6 +23,7 @@ export default function DataManagement() {
   const { data: payments = [] } = useSalaryPayments();
   const createEmployee = useCreateEmployee();
   const queryClient = useQueryClient();
+  const backupReminder = useBackupReminder();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const jsonInputRef = useRef<HTMLInputElement>(null);
   
@@ -161,6 +167,9 @@ export default function DataManagement() {
 
       const totalRecords = allData.employees.length + allData.advances.length + 
                           allData.salaryPayments.length + allData.receipts.length;
+      
+      // Record backup for reminder system
+      backupReminder.onBackupComplete();
       
       toast({
         title: "Sauvegarde réussie",
@@ -316,6 +325,88 @@ export default function DataManagement() {
           )}
         </Alert>
       )}
+
+      {/* Backup Scheduling Card */}
+      <Card className="border-blue-500/20 bg-blue-50/50 dark:bg-blue-950/20">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Clock className="h-5 w-5 text-blue-600" />
+            Planification des Sauvegardes
+          </CardTitle>
+          <CardDescription>
+            Configurez des rappels automatiques pour ne jamais oublier vos sauvegardes
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              {backupReminder.settings.enabled ? (
+                <Bell className="h-5 w-5 text-blue-600" />
+              ) : (
+                <BellOff className="h-5 w-5 text-muted-foreground" />
+              )}
+              <div>
+                <Label htmlFor="backup-reminder" className="font-medium">
+                  Rappels de sauvegarde
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  Recevez une notification quand une sauvegarde est recommandée
+                </p>
+              </div>
+            </div>
+            <Switch
+              id="backup-reminder"
+              checked={backupReminder.settings.enabled}
+              onCheckedChange={(enabled) => backupReminder.updateSettings({ enabled })}
+            />
+          </div>
+
+          {backupReminder.settings.enabled && (
+            <div className="space-y-4 pt-4 border-t">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="frequency" className="font-medium">
+                  Fréquence des rappels
+                </Label>
+                <Select
+                  value={String(backupReminder.settings.frequencyDays)}
+                  onValueChange={(value) => backupReminder.updateSettings({ frequencyDays: parseInt(value) })}
+                >
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">Tous les jours</SelectItem>
+                    <SelectItem value="7">Toutes les semaines</SelectItem>
+                    <SelectItem value="14">Toutes les 2 semaines</SelectItem>
+                    <SelectItem value="30">Tous les mois</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 p-4 bg-background rounded-lg">
+                <div>
+                  <p className="text-sm text-muted-foreground">Dernière sauvegarde</p>
+                  <p className="font-medium">
+                    {backupReminder.settings.lastBackupDate 
+                      ? formatDate(backupReminder.settings.lastBackupDate)
+                      : "Jamais"
+                    }
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Statut</p>
+                  <p className={`font-medium ${backupReminder.isOverdue ? 'text-amber-600' : 'text-green-600'}`}>
+                    {backupReminder.isOverdue 
+                      ? `En retard${backupReminder.daysSinceBackup !== null ? ` (${backupReminder.daysSinceBackup}j)` : ''}`
+                      : "À jour"
+                    }
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* JSON Backup Section */}
       <div className="grid gap-6 md:grid-cols-2">
