@@ -11,6 +11,7 @@ import { useEmployees, useCreateEmployee } from "@/hooks/useEmployees";
 import { useAdvances } from "@/hooks/useAdvances";
 import { useSalaryPayments } from "@/hooks/useSalaryPayments";
 import { useBackupReminder } from "@/hooks/useBackupReminder";
+import { AutoBackupSection } from "@/components/backup/AutoBackupSection";
 import { exportEmployeesToCSV, downloadCSV, parseCSVContent, generateSampleCSV } from "@/lib/csvUtils";
 import { exportAllData, importData, clearAllData } from "@/lib/db";
 import { toast } from "@/hooks/use-toast";
@@ -407,6 +408,9 @@ export default function DataManagement() {
           )}
         </CardContent>
       </Card>
+
+      {/* Auto Backup Section */}
+      <AutoBackupSection />
 
       {/* JSON Backup Section */}
       <div className="grid gap-6 md:grid-cols-2">
