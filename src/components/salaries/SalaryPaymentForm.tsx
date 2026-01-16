@@ -143,7 +143,7 @@ export function SalaryPaymentForm({
                 name="amountPaid"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Montant à payer (FCFA) *</FormLabel>
+                    <FormLabel>Montant à payer *</FormLabel>
                     <FormControl>
                       <Input {...field} type="number" min={0} max={remainingToPay} />
                     </FormControl>

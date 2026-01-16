@@ -222,12 +222,26 @@ export function getMonthName(month: number): MonthName {
 }
 
 export function formatCurrency(amount: number): string {
-  return new Intl.NumberFormat('fr-FR', {
-    style: 'currency',
-    currency: 'XOF',
+  // Get settings from localStorage for dynamic currency formatting
+  let locale = 'fr-MG';
+  let symbol = 'Ar';
+  
+  try {
+    const stored = localStorage.getItem('payroll_app_settings');
+    if (stored) {
+      const settings = JSON.parse(stored);
+      locale = settings.locale || locale;
+      symbol = settings.currencySymbol || symbol;
+    }
+  } catch (e) {
+    // Use defaults
+  }
+  
+  return new Intl.NumberFormat(locale, {
+    style: 'decimal',
     minimumFractionDigits: 0,
     maximumFractionDigits: 0
-  }).format(amount);
+  }).format(amount) + ' ' + symbol;
 }
 
 export function formatDate(dateString: string): string {
