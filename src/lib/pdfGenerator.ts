@@ -1,11 +1,19 @@
 import jsPDF from 'jspdf';
 import { Employee, Advance, SalaryPayment, Receipt, formatCurrency, getMonthName, formatDate } from '@/types';
+import { getSettings } from '@/lib/appSettings';
 
-const COMPANY_NAME = "VOTRE ENTREPRISE";
-const COMPANY_ADDRESS = "Adresse de l'entreprise";
-const COMPANY_PHONE = "+225 XX XX XX XX XX";
+function getCompanyInfo() {
+  const settings = getSettings();
+  return {
+    name: settings.companyName,
+    address: settings.companyAddress,
+    phone: settings.companyPhone,
+  };
+}
 
 function addHeader(doc: jsPDF, title: string) {
+  const company = getCompanyInfo();
+  
   // Header background
   doc.setFillColor(26, 54, 93);
   doc.rect(0, 0, 210, 40, 'F');
@@ -14,13 +22,13 @@ function addHeader(doc: jsPDF, title: string) {
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(20);
   doc.setFont('helvetica', 'bold');
-  doc.text(COMPANY_NAME, 20, 20);
+  doc.text(company.name, 20, 20);
 
   // Company info
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
-  doc.text(COMPANY_ADDRESS, 20, 28);
-  doc.text(COMPANY_PHONE, 20, 34);
+  doc.text(company.address, 20, 28);
+  doc.text(company.phone, 20, 34);
 
   // Title
   doc.setTextColor(26, 54, 93);

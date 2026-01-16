@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
-import { Advance, AdvanceFormData, Employee, MONTHS, generateId } from "@/types";
+import { Advance, AdvanceFormData, Employee, MONTHS, generateId, formatCurrency } from "@/types";
 
 const advanceSchema = z.object({
   employeeId: z.string().min(1, "L'employé est requis"),
@@ -124,13 +124,13 @@ export function AdvanceForm({
               name="amount"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Montant (FCFA) *</FormLabel>
+                  <FormLabel>Montant *</FormLabel>
                   <FormControl>
                     <Input {...field} type="number" min={1} placeholder="50000" />
                   </FormControl>
                   {selectedEmployee && (
                     <p className="text-xs text-muted-foreground">
-                      Maximum recommandé : {new Intl.NumberFormat('fr-FR').format(maxAdvance)} FCFA (50% du salaire net)
+                      Maximum recommandé : {formatCurrency(maxAdvance)} (50% du salaire net)
                     </p>
                   )}
                   <FormMessage />

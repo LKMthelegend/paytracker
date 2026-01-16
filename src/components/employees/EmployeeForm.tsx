@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Employee, EmployeeFormData, DEPARTMENTS, POSITIONS, generateId, generateMatricule } from "@/types";
+import { Employee, EmployeeFormData, DEPARTMENTS, POSITIONS, generateId, generateMatricule, formatCurrency } from "@/types";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 
 const employeeSchema = z.object({
@@ -309,7 +309,7 @@ export function EmployeeForm({ open, onOpenChange, onSubmit, employee, isLoading
                   name="baseSalary"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Salaire de base (FCFA) *</FormLabel>
+                      <FormLabel>Salaire de base *</FormLabel>
                       <FormControl>
                         <Input {...field} type="number" min={0} placeholder="250000" />
                       </FormControl>
@@ -322,7 +322,7 @@ export function EmployeeForm({ open, onOpenChange, onSubmit, employee, isLoading
                   name="bonus"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Primes (FCFA)</FormLabel>
+                      <FormLabel>Primes</FormLabel>
                       <FormControl>
                         <Input {...field} type="number" min={0} placeholder="50000" />
                       </FormControl>
@@ -335,7 +335,7 @@ export function EmployeeForm({ open, onOpenChange, onSubmit, employee, isLoading
                   name="deductions"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Déductions (FCFA)</FormLabel>
+                      <FormLabel>Déductions</FormLabel>
                       <FormControl>
                         <Input {...field} type="number" min={0} placeholder="25000" />
                       </FormControl>
@@ -349,11 +349,11 @@ export function EmployeeForm({ open, onOpenChange, onSubmit, employee, isLoading
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-muted-foreground">Salaire net estimé :</span>
                   <span className="font-semibold text-primary">
-                    {new Intl.NumberFormat('fr-FR').format(
+                    {formatCurrency(
                       (form.watch('baseSalary') || 0) + 
                       (form.watch('bonus') || 0) - 
                       (form.watch('deductions') || 0)
-                    )} FCFA
+                    )}
                   </span>
                 </div>
               </div>
