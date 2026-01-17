@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Building2, Phone, MapPin, Coins, Save, RotateCcw, Check, Sun, Moon, Monitor } from "lucide-react";
+import { Building2, Phone, MapPin, Coins, Save, RotateCcw, Check, Sun, Moon, Monitor, Image } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,6 +12,7 @@ import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { useSettings } from "@/hooks/useSettings";
 import { useTheme } from "@/components/theme/ThemeProvider";
+import { LogoUploader } from "@/components/settings/LogoUploader";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 const settingsSchema = z.object({
@@ -47,6 +48,7 @@ export default function Settings() {
   const { settings, updateSettings, resetSettings } = useSettings();
   const { theme, setTheme } = useTheme();
   const [isSaved, setIsSaved] = useState(false);
+  const [logo, setLogo] = useState(settings.companyLogo || "");
 
   const form = useForm<SettingsFormData>({
     resolver: zodResolver(settingsSchema),
@@ -61,7 +63,7 @@ export default function Settings() {
   });
 
   const handleSubmit = (data: SettingsFormData) => {
-    updateSettings(data);
+    updateSettings({ ...data, companyLogo: logo });
     setIsSaved(true);
     setTimeout(() => setIsSaved(false), 2000);
     toast({
@@ -81,6 +83,7 @@ export default function Settings() {
 
   const handleReset = () => {
     resetSettings();
+    setLogo("");
     form.reset({
       companyName: "VOTRE ENTREPRISE",
       companyAddress: "Adresse de l'entreprise",
@@ -172,6 +175,22 @@ export default function Settings() {
                   </FormItem>
                 )}
               />
+            </CardContent>
+          </Card>
+
+          {/* Logo de l'entreprise */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Image className="h-5 w-5" />
+                Logo de l'entreprise
+              </CardTitle>
+              <CardDescription>
+                Ce logo apparaîtra dans l'en-tête des documents PDF
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <LogoUploader logo={logo} onLogoChange={setLogo} />
             </CardContent>
           </Card>
 

@@ -4,6 +4,7 @@ export interface AppSettings {
   companyName: string;
   companyAddress: string;
   companyPhone: string;
+  companyLogo: string; // Base64 encoded image
   currency: string;
   currencySymbol: string;
   locale: string;
@@ -13,6 +14,7 @@ const DEFAULT_SETTINGS: AppSettings = {
   companyName: "VOTRE ENTREPRISE",
   companyAddress: "Adresse de l'entreprise",
   companyPhone: "+261 XX XX XXX XX",
+  companyLogo: "",
   currency: "MGA",
   currencySymbol: "Ar",
   locale: "fr-MG",
