@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Building2, Phone, MapPin, Coins, Save, RotateCcw, Check } from "lucide-react";
+import { Building2, Phone, MapPin, Coins, Save, RotateCcw, Check, Sun, Moon, Monitor } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
 import { useSettings } from "@/hooks/useSettings";
+import { useTheme } from "@/components/theme/ThemeProvider";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 const settingsSchema = z.object({
@@ -35,9 +36,16 @@ const CURRENCIES = [
   { code: "TND", symbol: "DT", name: "Dinar tunisien", locale: "fr-TN" },
 ];
 
+const THEMES = [
+  { value: "light", label: "Clair", icon: Sun },
+  { value: "dark", label: "Sombre", icon: Moon },
+  { value: "system", label: "Système", icon: Monitor },
+] as const;
+
 export default function Settings() {
   const { toast } = useToast();
   const { settings, updateSettings, resetSettings } = useSettings();
+  const { theme, setTheme } = useTheme();
   const [isSaved, setIsSaved] = useState(false);
 
   const form = useForm<SettingsFormData>({
@@ -81,6 +89,7 @@ export default function Settings() {
       currencySymbol: "Ar",
       locale: "fr-MG",
     });
+    setTheme("system");
     toast({
       title: "Paramètres réinitialisés",
       description: "Les paramètres par défaut ont été restaurés.",
@@ -163,6 +172,35 @@ export default function Settings() {
                   </FormItem>
                 )}
               />
+            </CardContent>
+          </Card>
+
+          {/* Thème */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Sun className="h-5 w-5" />
+                Apparence
+              </CardTitle>
+              <CardDescription>
+                Choisissez le thème de l'interface
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-3 gap-4">
+                {THEMES.map(({ value, label, icon: Icon }) => (
+                  <Button
+                    key={value}
+                    type="button"
+                    variant={theme === value ? "default" : "outline"}
+                    className="flex flex-col items-center gap-2 h-auto py-4"
+                    onClick={() => setTheme(value)}
+                  >
+                    <Icon className="h-6 w-6" />
+                    <span>{label}</span>
+                  </Button>
+                ))}
+              </div>
             </CardContent>
           </Card>
 
