@@ -17,6 +17,7 @@ import { exportAllData, importData, clearAllData } from "@/lib/db";
 import { toast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 import { formatDate } from "@/types";
+import { getSettings, saveSettings, AppSettings } from "@/lib/appSettings";
 
 export default function DataManagement() {
   const { data: employees = [], isLoading } = useEmployees();
@@ -153,7 +154,9 @@ export default function DataManagement() {
     setIsExportingJson(true);
     try {
       const allData = await exportAllData();
-      const jsonContent = JSON.stringify(allData, null, 2);
+      const settings = getSettings();
+      const backupData = { ...allData, settings };
+      const jsonContent = JSON.stringify(backupData, null, 2);
       const blob = new Blob([jsonContent], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       
@@ -223,6 +226,11 @@ export default function DataManagement() {
 
       await importData(data);
       
+      // Restore settings if present
+      if (data.settings) {
+        saveSettings(data.settings as AppSettings);
+      }
+      
       // Invalidate all queries to refresh data
       queryClient.invalidateQueries({ queryKey: ["employees"] });
       queryClient.invalidateQueries({ queryKey: ["advances"] });
@@ -236,9 +244,11 @@ export default function DataManagement() {
         receipts: data.receipts?.length || 0
       };
 
+      const settingsRestored = data.settings ? " Paramètres restaurés." : "";
+
       toast({
         title: "Restauration réussie",
-        description: `Importé: ${importedCount.employees} employés, ${importedCount.advances} avances, ${importedCount.payments} paiements, ${importedCount.receipts} reçus.`
+        description: `Importé: ${importedCount.employees} employés, ${importedCount.advances} avances, ${importedCount.payments} paiements, ${importedCount.receipts} reçus.${settingsRestored}`
       });
 
       setImportStatus({
@@ -248,7 +258,8 @@ export default function DataManagement() {
           `${importedCount.employees} employé(s)`,
           `${importedCount.advances} avance(s)`,
           `${importedCount.payments} paiement(s) de salaire`,
-          `${importedCount.receipts} reçu(s)`
+          `${importedCount.receipts} reçu(s)`,
+          ...(data.settings ? ['Paramètres de l\'application restaurés'] : [])
         ]
       });
 
