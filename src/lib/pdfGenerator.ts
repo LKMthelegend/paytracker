@@ -8,6 +8,7 @@ function getCompanyInfo() {
     name: settings.companyName,
     address: settings.companyAddress,
     phone: settings.companyPhone,
+    logo: settings.companyLogo,
   };
 }
 
@@ -18,17 +19,28 @@ function addHeader(doc: jsPDF, title: string) {
   doc.setFillColor(26, 54, 93);
   doc.rect(0, 0, 210, 40, 'F');
 
+  // Add logo if available
+  let textStartX = 20;
+  if (company.logo) {
+    try {
+      doc.addImage(company.logo, 'PNG', 15, 5, 30, 30);
+      textStartX = 50;
+    } catch (e) {
+      console.error('Error adding logo to PDF:', e);
+    }
+  }
+
   // Company name
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(20);
   doc.setFont('helvetica', 'bold');
-  doc.text(company.name, 20, 20);
+  doc.text(company.name, textStartX, 20);
 
   // Company info
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
-  doc.text(company.address, 20, 28);
-  doc.text(company.phone, 20, 34);
+  doc.text(company.address, textStartX, 28);
+  doc.text(company.phone, textStartX, 34);
 
   // Title
   doc.setTextColor(26, 54, 93);
