@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { exportAllData } from "@/lib/db";
+import { getSettings, AppSettings } from "@/lib/appSettings";
 
 export interface AutoBackupSettings {
   enabled: boolean;
@@ -75,7 +76,9 @@ function saveBackupIndex(index: LocalBackup[]): void {
 export async function createAutoBackup(): Promise<LocalBackup | null> {
   try {
     const data = await exportAllData();
-    const jsonContent = JSON.stringify(data);
+    const appSettings = getSettings();
+    const backupData = { ...data, settings: appSettings };
+    const jsonContent = JSON.stringify(backupData);
     const backupId = `backup_${Date.now()}`;
     const timestamp = new Date().toISOString();
     
@@ -99,8 +102,8 @@ export async function createAutoBackup(): Promise<LocalBackup | null> {
     index.unshift(backup);
     
     // Cleanup old backups
-    const settings = getAutoBackupSettings();
-    while (index.length > settings.maxBackups) {
+    const autoBackupSettings = getAutoBackupSettings();
+    while (index.length > autoBackupSettings.maxBackups) {
       const oldBackup = index.pop();
       if (oldBackup) {
         localStorage.removeItem(`${AUTO_BACKUP_PREFIX}${oldBackup.id}`);
