@@ -7,8 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Employee, EmployeeFormData, DEPARTMENTS, POSITIONS, generateId, generateMatricule, formatCurrency } from "@/types";
+import { Employee, EmployeeFormData, generateId, generateMatricule, formatCurrency } from "@/types";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { getDepartments, getPositions } from "@/lib/appSettings";
 
 const employeeSchema = z.object({
   matricule: z.string().min(1, "Le matricule est requis"),
@@ -37,6 +38,8 @@ interface EmployeeFormProps {
 
 export function EmployeeForm({ open, onOpenChange, onSubmit, employee, isLoading }: EmployeeFormProps) {
   const isEditing = !!employee;
+  const departments = getDepartments();
+  const positions = getPositions();
 
   const form = useForm<EmployeeFormData>({
     resolver: zodResolver(employeeSchema),
@@ -250,7 +253,7 @@ export function EmployeeForm({ open, onOpenChange, onSubmit, employee, isLoading
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {DEPARTMENTS.map(dept => (
+                          {departments.map(dept => (
                             <SelectItem key={dept} value={dept}>{dept}</SelectItem>
                           ))}
                         </SelectContent>
@@ -272,7 +275,7 @@ export function EmployeeForm({ open, onOpenChange, onSubmit, employee, isLoading
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {POSITIONS.map(pos => (
+                          {positions.map(pos => (
                             <SelectItem key={pos} value={pos}>{pos}</SelectItem>
                           ))}
                         </SelectContent>
