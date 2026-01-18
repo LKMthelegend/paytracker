@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useEmployees, useCreateEmployee, useUpdateEmployee, useDeleteEmployee } from "@/hooks/useEmployees";
-import { Employee, DEPARTMENTS, EMPLOYEE_STATUS } from "@/types";
+import { Employee, EMPLOYEE_STATUS } from "@/types";
 import { EmployeeForm } from "@/components/employees/EmployeeForm";
 import { EmployeeCard } from "@/components/employees/EmployeeCard";
 import { EmployeeDetailsDialog } from "@/components/employees/EmployeeDetailsDialog";
@@ -12,6 +12,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Skeleton } from "@/components/ui/skeleton";
 import { Plus, Search, Users, Filter, X } from "lucide-react";
 import { toast } from "sonner";
+import { getDepartments } from "@/lib/appSettings";
 
 const ITEMS_PER_PAGE = 12;
 
@@ -20,6 +21,7 @@ export default function Employees() {
   const addEmployee = useCreateEmployee();
   const updateEmployee = useUpdateEmployee();
   const deleteEmployee = useDeleteEmployee();
+  const departments = getDepartments();
   
   // Dialog states
   const [formOpen, setFormOpen] = useState(false);
@@ -149,7 +151,7 @@ export default function Employees() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Tous les départements</SelectItem>
-                  {DEPARTMENTS.map(dept => (
+                  {departments.map(dept => (
                     <SelectItem key={dept} value={dept}>{dept}</SelectItem>
                   ))}
                 </SelectContent>
