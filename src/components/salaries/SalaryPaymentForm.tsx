@@ -1,3 +1,4 @@
+import React from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -10,6 +11,8 @@ import { SalaryPayment, Employee, formatCurrency, getMonthName, generateId } fro
 import { Separator } from "@/components/ui/separator";
 
 const paymentSchema = z.object({
+  bonus: z.coerce.number().min(0, "Les primes doivent être positives"),
+  deductions: z.coerce.number().min(0, "Les déductions doivent être positives"),
   amountPaid: z.coerce.number().min(0, "Le montant doit être positif"),
   paymentDate: z.string().min(1, "La date de paiement est requise"),
   notes: z.string().max(500).optional(),
@@ -38,27 +41,58 @@ export function SalaryPaymentForm({
   totalAdvances,
   isLoading 
 }: SalaryPaymentFormProps) {
-  const grossSalary = employee.baseSalary + employee.bonus;
-  const netSalary = grossSalary - employee.deductions - totalAdvances;
+  const currentBonus = existingPayment?.bonus || employee.bonus;
+  const currentDeductions = existingPayment?.deductions || employee.deductions;
+  const grossSalary = employee.baseSalary + currentBonus;
+  const netSalary = grossSalary - currentDeductions - totalAdvances;
   const alreadyPaid = existingPayment?.amountPaid || 0;
   const remainingToPay = netSalary - alreadyPaid;
 
   const form = useForm({
     resolver: zodResolver(paymentSchema),
     defaultValues: {
+      bonus: currentBonus,
+      deductions: currentDeductions,
       amountPaid: remainingToPay > 0 ? remainingToPay : 0,
       paymentDate: new Date().toISOString().split('T')[0],
       notes: existingPayment?.notes || "",
     },
   });
 
-  const handleSubmit = (data: { amountPaid: number; paymentDate: string; notes?: string }) => {
-    const newTotalPaid = alreadyPaid + data.amountPaid;
-    const newRemaining = netSalary - newTotalPaid;
+  // Watch bonus and deductions to update calculations
+  const watchBonus = form.watch("bonus");
+  const watchDeductions = form.watch("deductions");
+  const watchAmountPaid = form.watch("amountPaid");
+  
+  // Convert to numbers to avoid string concatenation issues
+  const bonusValue = typeof watchBonus === 'string' ? parseFloat(watchBonus) || 0 : watchBonus;
+  const deductionsValue = typeof watchDeductions === 'string' ? parseFloat(watchDeductions) || 0 : watchDeductions;
+  
+  const recalculatedGrossSalary = employee.baseSalary + bonusValue;
+  const recalculatedNetSalary = recalculatedGrossSalary - deductionsValue - totalAdvances;
+  const recalculatedRemainingToPay = recalculatedNetSalary - alreadyPaid;
+
+  // Auto-update amountPaid when bonus/deductions change (if not manually modified)
+  React.useEffect(() => {
+    if (recalculatedRemainingToPay > 0 && watchAmountPaid === remainingToPay) {
+      form.setValue('amountPaid', recalculatedRemainingToPay);
+    }
+  }, [recalculatedRemainingToPay, watchAmountPaid, remainingToPay, form]);
+
+  const handleSubmit = (data: { bonus: number; deductions: number; amountPaid: number; paymentDate: string; notes?: string }) => {
+    // Ensure values are numbers
+    const bonus = typeof data.bonus === 'string' ? parseFloat(data.bonus) || 0 : (data.bonus ?? 0);
+    const deductions = typeof data.deductions === 'string' ? parseFloat(data.deductions) || 0 : (data.deductions ?? 0);
+    const amountPaid = typeof data.amountPaid === 'string' ? parseFloat(data.amountPaid) || 0 : (data.amountPaid ?? 0);
+
+    const adjustedGrossSalary = employee.baseSalary + bonus;
+    const adjustedNetSalary = adjustedGrossSalary - deductions - totalAdvances;
+    const newTotalPaid = alreadyPaid + amountPaid;
+    const newRemaining = adjustedNetSalary - newTotalPaid;
     const now = new Date().toISOString();
 
     let status: 'pending' | 'partial' | 'paid' = 'pending';
-    if (newTotalPaid >= netSalary) {
+    if (newTotalPaid >= adjustedNetSalary) {
       status = 'paid';
     } else if (newTotalPaid > 0) {
       status = 'partial';
@@ -70,10 +104,10 @@ export function SalaryPaymentForm({
       month,
       year,
       baseSalary: employee.baseSalary,
-      bonus: employee.bonus,
-      deductions: employee.deductions,
+      bonus: bonus,
+      deductions: deductions,
       totalAdvances,
-      netSalary,
+      netSalary: adjustedNetSalary,
       amountPaid: newTotalPaid,
       remainingAmount: newRemaining > 0 ? newRemaining : 0,
       status,
@@ -89,7 +123,7 @@ export function SalaryPaymentForm({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Paiement de salaire</DialogTitle>
           <DialogDescription>
@@ -97,7 +131,7 @@ export function SalaryPaymentForm({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-4 pr-4">
           {/* Récapitulatif */}
           <div className="p-4 bg-muted/50 rounded-lg space-y-2">
             <h4 className="font-medium mb-3">Récapitulatif du salaire</h4>
@@ -107,11 +141,11 @@ export function SalaryPaymentForm({
             </div>
             <div className="flex justify-between text-sm text-success">
               <span>+ Primes</span>
-              <span>{formatCurrency(employee.bonus)}</span>
+              <span>{formatCurrency(bonusValue)}</span>
             </div>
             <div className="flex justify-between text-sm text-destructive">
               <span>- Déductions</span>
-              <span>{formatCurrency(employee.deductions)}</span>
+              <span>{formatCurrency(deductionsValue)}</span>
             </div>
             <div className="flex justify-between text-sm text-destructive">
               <span>- Avances versées</span>
@@ -120,24 +154,48 @@ export function SalaryPaymentForm({
             <Separator className="my-2" />
             <div className="flex justify-between font-semibold">
               <span>Salaire net</span>
-              <span className="text-primary">{formatCurrency(netSalary)}</span>
+              <span className="text-primary">{formatCurrency(recalculatedNetSalary)}</span>
             </div>
-            {alreadyPaid > 0 && (
-              <>
-                <div className="flex justify-between text-sm text-muted-foreground">
-                  <span>Déjà payé</span>
-                  <span>{formatCurrency(alreadyPaid)}</span>
-                </div>
-                <div className="flex justify-between font-semibold text-warning">
-                  <span>Reste à payer</span>
-                  <span>{formatCurrency(remainingToPay)}</span>
-                </div>
-              </>
-            )}
+            <div className="flex justify-between text-sm text-muted-foreground">
+              <span>Déjà payé</span>
+              <span>{formatCurrency(alreadyPaid)}</span>
+            </div>
+            <div className="flex justify-between font-semibold text-warning">
+              <span>Reste à payer</span>
+              <span>{formatCurrency(recalculatedRemainingToPay)}</span>
+            </div>
           </div>
 
           <Form {...form}>
             <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+              <FormField
+                control={form.control}
+                name="bonus"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Primes *</FormLabel>
+                    <FormControl>
+                      <Input {...field} type="number" min={0} step={0.01} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="deductions"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Déductions *</FormLabel>
+                    <FormControl>
+                      <Input {...field} type="number" min={0} step={0.01} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
               <FormField
                 control={form.control}
                 name="amountPaid"
@@ -145,7 +203,7 @@ export function SalaryPaymentForm({
                   <FormItem>
                     <FormLabel>Montant à payer *</FormLabel>
                     <FormControl>
-                      <Input {...field} type="number" min={0} max={remainingToPay} />
+                      <Input {...field} type="number" min={0} max={recalculatedRemainingToPay} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -184,7 +242,7 @@ export function SalaryPaymentForm({
                 <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
                   Annuler
                 </Button>
-                <Button type="submit" disabled={isLoading || remainingToPay <= 0}>
+                <Button type="submit" disabled={isLoading || recalculatedRemainingToPay <= 0}>
                   {isLoading ? "Enregistrement..." : "Enregistrer le paiement"}
                 </Button>
               </DialogFooter>

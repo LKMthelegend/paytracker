@@ -8,13 +8,13 @@ export interface Employee {
   email: string;
   phone: string;
   address: string;
-  dateOfBirth: string;
+  dateOfBirth?: string;
   hireDate: string;
   position: string;
   department: string;
   baseSalary: number;
-  bonus: number;
-  deductions: number;
+  bonus?: number;
+  deductions?: number;
   status: 'active' | 'inactive' | 'suspended';
   photo?: string;
   createdAt: string;
@@ -28,13 +28,13 @@ export interface EmployeeFormData {
   email: string;
   phone: string;
   address: string;
-  dateOfBirth: string;
+  dateOfBirth?: string;
   hireDate: string;
   position: string;
   department: string;
   baseSalary: number;
-  bonus: number;
-  deductions: number;
+  bonus?: number;
+  deductions?: number;
   status: 'active' | 'inactive' | 'suspended';
   photo?: string;
 }
@@ -144,6 +144,25 @@ export interface PaginationState {
   total: number;
 }
 
+// ============= Department & Position Types =============
+
+export interface Department {
+  id: string;
+  name: string;
+  description?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Position {
+  id: string;
+  name: string;
+  department: string;
+  description?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 // ============= Department Options =============
 
 export const DEPARTMENTS = [
@@ -152,12 +171,10 @@ export const DEPARTMENTS = [
   'Comptabilité',
   'Marketing',
   'Commercial',
-  'Production',
-  'Logistique',
   'Informatique',
   'Juridique',
   'Maintenance',
-  'Qualité',
+  'Infographie',
   'Autre'
 ] as const;
 
@@ -169,10 +186,7 @@ export const POSITIONS = [
   'Responsable',
   'Superviseur',
   'Technicien',
-  'Agent',
-  'Assistant',
-  'Stagiaire',
-  'Consultant',
+  'Agent sur terrain',
   'Autre'
 ] as const;
 
@@ -223,25 +237,21 @@ export function getMonthName(month: number): MonthName {
 
 export function formatCurrency(amount: number): string {
   // Get settings from localStorage for dynamic currency formatting
-  let locale = 'fr-MG';
   let symbol = 'Ar';
   
   try {
     const stored = localStorage.getItem('payroll_app_settings');
     if (stored) {
       const settings = JSON.parse(stored);
-      locale = settings.locale || locale;
       symbol = settings.currencySymbol || symbol;
     }
   } catch (e) {
     // Use defaults
   }
   
-  return new Intl.NumberFormat(locale, {
-    style: 'decimal',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0
-  }).format(amount) + ' ' + symbol;
+  // Format number with spaces for thousands separator (compatible with PDF)
+  const formattedNumber = Math.floor(amount).toString().replace(/\B(?=(\d{3})+(?!\d))/g, ' ');
+  return formattedNumber + ' ' + symbol;
 }
 
 export function formatDate(dateString: string): string {

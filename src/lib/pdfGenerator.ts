@@ -1,6 +1,26 @@
 import jsPDF from 'jspdf';
 import { Employee, Advance, SalaryPayment, Receipt, formatCurrency, getMonthName, formatDate } from '@/types';
 import { getSettings } from '@/lib/appSettings';
+import { getDepartment, getPosition } from '@/lib/db';
+
+// Enrich employee with position and department names
+export async function enrichEmployeeData(employee: Employee): Promise<Employee & { positionName?: string; departmentName?: string }> {
+  try {
+    const [dept, pos] = await Promise.all([
+      getDepartment(employee.department),
+      getPosition(employee.position)
+    ]);
+    
+    return {
+      ...employee,
+      positionName: pos?.name,
+      departmentName: dept?.name,
+    };
+  } catch (error) {
+    console.error('Error enriching employee data:', error);
+    return employee;
+  }
+}
 
 function getCompanyInfo() {
   const settings = getSettings();
@@ -8,7 +28,6 @@ function getCompanyInfo() {
     name: settings.companyName,
     address: settings.companyAddress,
     phone: settings.companyPhone,
-    logo: settings.companyLogo,
   };
 }
 
@@ -19,28 +38,17 @@ function addHeader(doc: jsPDF, title: string) {
   doc.setFillColor(26, 54, 93);
   doc.rect(0, 0, 210, 40, 'F');
 
-  // Add logo if available
-  let textStartX = 20;
-  if (company.logo) {
-    try {
-      doc.addImage(company.logo, 'PNG', 15, 5, 30, 30);
-      textStartX = 50;
-    } catch (e) {
-      console.error('Error adding logo to PDF:', e);
-    }
-  }
-
   // Company name
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(20);
   doc.setFont('helvetica', 'bold');
-  doc.text(company.name, textStartX, 20);
+  doc.text(company.name, 20, 20);
 
   // Company info
   doc.setFontSize(10);
   doc.setFont('helvetica', 'normal');
-  doc.text(company.address, textStartX, 28);
-  doc.text(company.phone, textStartX, 34);
+  doc.text(company.address, 20, 28);
+  doc.text(company.phone, 20, 34);
 
   // Title
   doc.setTextColor(26, 54, 93);
@@ -94,8 +102,8 @@ export function generateSalaryReceipt(
   doc.text(`Nom : ${employee.firstName} ${employee.lastName}`, 25, y);
   doc.text(`Matricule : ${employee.matricule}`, 120, y);
   y += 6;
-  doc.text(`Poste : ${employee.position}`, 25, y);
-  doc.text(`Département : ${employee.department}`, 120, y);
+  doc.text(`Poste : ${(employee as any).positionName || employee.position}`, 25, y);
+  doc.text(`Département : ${(employee as any).departmentName || employee.department}`, 120, y);
   y += 6;
   doc.text(`Période : ${getMonthName(payment.month)} ${payment.year}`, 25, y);
 
@@ -204,7 +212,7 @@ export function generateAdvanceReceipt(
   doc.text(`Nom : ${employee.firstName} ${employee.lastName}`, 25, y);
   doc.text(`Matricule : ${employee.matricule}`, 120, y);
   y += 6;
-  doc.text(`Poste : ${employee.position} - ${employee.department}`, 25, y);
+  doc.text(`Poste : ${(employee as any).positionName || employee.position} - ${(employee as any).departmentName || employee.department}`, 25, y);
 
   y += 25;
 

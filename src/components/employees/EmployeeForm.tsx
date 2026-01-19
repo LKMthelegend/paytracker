@@ -1,14 +1,17 @@
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Employee, EmployeeFormData, DEPARTMENTS, POSITIONS, generateId, generateMatricule, formatCurrency } from "@/types";
+import { Employee, EmployeeFormData, generateId, generateMatricule, formatCurrency } from "@/types";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { useDepartments } from "@/hooks/useDepartments";
+import { usePositions, usePositionsByDepartment } from "@/hooks/usePositions";
 
 const employeeSchema = z.object({
   matricule: z.string().min(1, "Le matricule est requis"),
@@ -17,13 +20,13 @@ const employeeSchema = z.object({
   email: z.string().email("Email invalide").or(z.literal("")),
   phone: z.string().min(8, "Le téléphone doit contenir au moins 8 chiffres").max(20),
   address: z.string().max(200).optional(),
-  dateOfBirth: z.string().min(1, "La date de naissance est requise"),
+  dateOfBirth: z.string().optional(),
   hireDate: z.string().min(1, "La date d'embauche est requise"),
   position: z.string().min(1, "Le poste est requis"),
   department: z.string().min(1, "Le département est requis"),
   baseSalary: z.coerce.number().min(0, "Le salaire doit être positif"),
-  bonus: z.coerce.number().min(0, "La prime doit être positive"),
-  deductions: z.coerce.number().min(0, "Les déductions doivent être positives"),
+  bonus: z.coerce.number().optional().default(0),
+  deductions: z.coerce.number().optional().default(0),
   status: z.enum(['active', 'inactive', 'suspended']),
 });
 
@@ -73,6 +76,34 @@ export function EmployeeForm({ open, onOpenChange, onSubmit, employee, isLoading
     },
   });
 
+  const { data: departments = [] } = useDepartments();
+  const selectedDept = form.watch("department");
+  const { data: positions = [] } = usePositionsByDepartment(selectedDept);
+
+  // Reset form when dialog closes or employee changes
+  useEffect(() => {
+    if (!open) {
+      form.reset();
+    } else if (open && !employee) {
+      form.reset({
+        matricule: generateMatricule(),
+        firstName: "",
+        lastName: "",
+        email: "",
+        phone: "",
+        address: "",
+        dateOfBirth: "",
+        hireDate: new Date().toISOString().split('T')[0],
+        position: "",
+        department: "",
+        baseSalary: 0,
+        bonus: 0,
+        deductions: 0,
+        status: 'active' as const,
+      });
+    }
+  }, [open, employee, form]);
+
   const handleSubmit = (data: EmployeeFormData) => {
     const now = new Date().toISOString();
     const employeeData: Employee = {
@@ -83,7 +114,6 @@ export function EmployeeForm({ open, onOpenChange, onSubmit, employee, isLoading
       updatedAt: now,
     };
     onSubmit(employeeData);
-    form.reset();
   };
 
   return (
@@ -250,8 +280,8 @@ export function EmployeeForm({ open, onOpenChange, onSubmit, employee, isLoading
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {DEPARTMENTS.map(dept => (
-                            <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                          {departments.map(dept => (
+                            <SelectItem key={dept.id} value={dept.id}>{dept.name}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -265,15 +295,15 @@ export function EmployeeForm({ open, onOpenChange, onSubmit, employee, isLoading
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Poste *</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} defaultValue={field.value} disabled={!selectedDept}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Sélectionner un poste" />
+                            <SelectValue placeholder={selectedDept ? "Sélectionner un poste" : "Sélectionner d'abord un département"} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {POSITIONS.map(pos => (
-                            <SelectItem key={pos} value={pos}>{pos}</SelectItem>
+                          {positions.map(pos => (
+                            <SelectItem key={pos.id} value={pos.id}>{pos.name}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
@@ -317,43 +347,13 @@ export function EmployeeForm({ open, onOpenChange, onSubmit, employee, isLoading
                     </FormItem>
                   )}
                 />
-                <FormField
-                  control={form.control}
-                  name="bonus"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Primes</FormLabel>
-                      <FormControl>
-                        <Input {...field} type="number" min={0} placeholder="50000" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="deductions"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Déductions</FormLabel>
-                      <FormControl>
-                        <Input {...field} type="number" min={0} placeholder="25000" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
               </div>
 
               <div className="p-4 bg-muted/50 rounded-lg">
                 <div className="flex justify-between items-center">
-                  <span className="text-sm text-muted-foreground">Salaire net estimé :</span>
+                  <span className="text-sm text-muted-foreground">Salaire de base :</span>
                   <span className="font-semibold text-primary">
-                    {formatCurrency(
-                      (form.watch('baseSalary') || 0) + 
-                      (form.watch('bonus') || 0) - 
-                      (form.watch('deductions') || 0)
-                    )}
+                    {formatCurrency(Number(form.watch('baseSalary') || 0))}
                   </span>
                 </div>
               </div>

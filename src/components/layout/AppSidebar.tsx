@@ -6,7 +6,8 @@ import {
   LayoutDashboard,
   Settings,
   Database,
-  Building2
+  Building2,
+  Briefcase
 } from "lucide-react";
 import { NavLink } from "@/components/NavLink";
 import { useLocation } from "react-router-dom";
@@ -58,6 +59,15 @@ const mainMenuItems = [
   },
 ];
 
+const adminMenuItems = [
+  { 
+    title: "Départements & Postes", 
+    url: "/departments-positions", 
+    icon: Briefcase,
+    description: "Gestion de l'organisation"
+  },
+];
+
 const systemMenuItems = [
   { 
     title: "Données", 
@@ -93,7 +103,7 @@ export function AppSidebar() {
           </div>
           {!collapsed && (
             <div className="flex flex-col">
-              <span className="font-semibold text-sidebar-foreground">PayrollPro</span>
+              <span className="font-semibold text-sidebar-foreground">PayTracker</span>
               <span className="text-xs text-sidebar-foreground/60">Gestion des salaires</span>
             </div>
           )}
@@ -117,6 +127,39 @@ export function AppSidebar() {
                     <NavLink 
                       to={item.url} 
                       end={item.url === "/"}
+                      className="flex items-center gap-3 px-3 py-2 rounded-md transition-colors"
+                      activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
+                    >
+                      <item.icon className="h-5 w-5 shrink-0" />
+                      {!collapsed && (
+                        <div className="flex flex-col">
+                          <span className="font-medium">{item.title}</span>
+                          <span className="text-xs text-sidebar-foreground/60">{item.description}</span>
+                        </div>
+                      )}
+                    </NavLink>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel className="text-sidebar-foreground/50 uppercase text-xs tracking-wider">
+            Administration
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {adminMenuItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton 
+                    asChild
+                    isActive={isActive(item.url)}
+                    tooltip={collapsed ? item.title : undefined}
+                  >
+                    <NavLink 
+                      to={item.url} 
                       className="flex items-center gap-3 px-3 py-2 rounded-md transition-colors"
                       activeClassName="bg-sidebar-accent text-sidebar-accent-foreground"
                     >
@@ -172,7 +215,7 @@ export function AppSidebar() {
       <SidebarFooter className="border-t border-sidebar-border p-4">
         {!collapsed && (
           <div className="text-xs text-sidebar-foreground/50 text-center">
-            <p>PayrollPro v1.0</p>
+            <p>PayTracker v1.0</p>
             <p>Mode Hors Ligne Activé</p>
           </div>
         )}

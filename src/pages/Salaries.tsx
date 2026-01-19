@@ -1,9 +1,11 @@
 import { useState, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useEmployees } from "@/hooks/useEmployees";
 import { useAdvances } from "@/hooks/useAdvances";
 import { useSalaryPayments, useRecordSalaryPayment, useCalculateMonthlySalary } from "@/hooks/useSalaryPayments";
 import { Employee, SalaryPayment, formatCurrency, getMonthName, MONTHS, PAYMENT_STATUS } from "@/types";
 import { SalaryPaymentForm } from "@/components/salaries/SalaryPaymentForm";
+import { PaymentDetailsDialog } from "@/components/salaries/PaymentDetailsDialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -13,8 +15,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Skeleton } from "@/components/ui/skeleton";
 import { CreditCard, TrendingUp, TrendingDown, Search, Calculator, CheckCircle, Clock, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
+import { updateSalaryPayment } from "@/lib/db";
 
 export default function Salaries() {
+  const queryClient = useQueryClient();
   const { data: employees = [], isLoading: employeesLoading } = useEmployees();
   const { data: advances = [] } = useAdvances();
   const { data: payments = [], isLoading: paymentsLoading } = useSalaryPayments();
@@ -28,6 +32,8 @@ export default function Salaries() {
   
   const [paymentFormOpen, setPaymentFormOpen] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
+  const [detailsDialogOpen, setDetailsDialogOpen] = useState(false);
+  const [selectedPayment, setSelectedPayment] = useState<SalaryPayment | null>(null);
 
   // Calculate salary data for each employee
   const salaryData = useMemo(() => {
@@ -55,8 +61,12 @@ export default function Salaries() {
                p.year === selectedYear
         );
 
-        const grossSalary = employee.baseSalary + employee.bonus;
-        const netSalary = grossSalary - employee.deductions - totalAdvances;
+        // Use payment bonus/deductions if they exist, otherwise use employee defaults
+        const bonus = existingPayment?.bonus ?? employee.bonus;
+        const deductions = existingPayment?.deductions ?? employee.deductions;
+        
+        const grossSalary = employee.baseSalary + bonus;
+        const netSalary = grossSalary - deductions - totalAdvances;
         const amountPaid = existingPayment?.amountPaid || 0;
         const remainingAmount = netSalary - amountPaid;
 
@@ -117,18 +127,26 @@ export default function Salaries() {
       );
       
       if (existing) {
-        await recordPayment.mutateAsync({
-          paymentId: existing.id,
-          amount: payment.amountPaid - existing.amountPaid,
-          notes: payment.notes
-        });
+        // Update existing payment with all fields including bonus and deductions
+        await updateSalaryPayment(payment);
       } else {
-        await calculateSalary.mutateAsync({
+        // Create the salary payment record first
+        const createdPayment = await calculateSalary.mutateAsync({
           employee: selectedEmployee!,
           month: payment.month,
           year: payment.year
         });
+        
+        // Then update it with the full payment data including bonus and deductions
+        const fullPayment: SalaryPayment = {
+          ...payment,
+          id: createdPayment.id,
+        };
+        await updateSalaryPayment(fullPayment);
       }
+      
+      // Invalidate the cache to refresh the data
+      queryClient.invalidateQueries({ queryKey: ["salaryPayments"] });
       
       toast.success("Paiement enregistré avec succès");
       setPaymentFormOpen(false);
@@ -190,11 +208,16 @@ export default function Salaries() {
             <div className="relative w-full sm:w-auto">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Rechercher un employé..."
+                placeholder="Rechercher un employé (nom ou matricule)..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="pl-10 w-full sm:w-[250px]"
+                className="pl-10 w-full sm:w-[300px] transition-all focus-visible:ring-2"
               />
+              {search && (
+                <div className="text-xs text-muted-foreground mt-1">
+                  {salaryData.length} employé{salaryData.length !== 1 ? 's' : ''} trouvé{salaryData.length !== 1 ? 's' : ''}
+                </div>
+              )}
             </div>
           </div>
         </CardContent>
@@ -319,8 +342,23 @@ export default function Salaries() {
                         <Button
                           size="sm"
                           variant={status === 'paid' ? 'outline' : 'default'}
-                          onClick={() => handlePayClick(employee)}
-                          disabled={remainingAmount <= 0}
+                          onClick={() => {
+                            if (status === 'paid') {
+                              const payment = payments.find(
+                                p => p.employeeId === employee.id && 
+                                     p.month === selectedMonth && 
+                                     p.year === selectedYear
+                              );
+                              if (payment) {
+                                setSelectedPayment(payment);
+                                setSelectedEmployee(employee);
+                                setDetailsDialogOpen(true);
+                              }
+                            } else {
+                              handlePayClick(employee);
+                            }
+                          }}
+                          disabled={remainingAmount <= 0 && status !== 'paid'}
                         >
                           <CreditCard className="h-4 w-4 mr-1" />
                           {status === 'paid' ? 'Détails' : 'Payer'}
@@ -353,6 +391,14 @@ export default function Salaries() {
           isLoading={recordPayment.isPending || calculateSalary.isPending}
         />
       )}
+
+      {/* Payment Details Dialog */}
+      <PaymentDetailsDialog
+        open={detailsDialogOpen}
+        onOpenChange={setDetailsDialogOpen}
+        payment={selectedPayment}
+        employee={selectedEmployee}
+      />
     </div>
   );
 }

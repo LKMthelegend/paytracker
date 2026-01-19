@@ -3,7 +3,7 @@ import { useEmployees } from "@/hooks/useEmployees";
 import { useAdvances } from "@/hooks/useAdvances";
 import { useSalaryPayments } from "@/hooks/useSalaryPayments";
 import { Employee, formatCurrency, getMonthName, MONTHS } from "@/types";
-import { generateSalaryReceipt, generateAdvanceReceipt, downloadPDF } from "@/lib/pdfGenerator";
+import { generateSalaryReceipt, generateAdvanceReceipt, downloadPDF, enrichEmployeeData } from "@/lib/pdfGenerator";
 import { SignaturePad } from "@/components/receipts/SignaturePad";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -86,23 +86,26 @@ export default function Receipts() {
     setSignatureDialogOpen(true);
   };
 
-  const handleDownloadReceipt = () => {
+  const handleDownloadReceipt = async () => {
     if (!selectedReceipt) return;
 
     try {
       let pdf;
       let filename;
 
+      // Enrich employee data with position and department names
+      const enrichedEmployee = await enrichEmployeeData(selectedReceipt.employee);
+
       if (selectedReceipt.type === 'salary') {
         pdf = generateSalaryReceipt(
-          selectedReceipt.employee,
+          enrichedEmployee,
           selectedReceipt.data,
           signature || undefined
         );
         filename = `bulletin-paie-${selectedReceipt.employee.matricule}-${selectedMonth}-${selectedYear}.pdf`;
       } else {
         pdf = generateAdvanceReceipt(
-          selectedReceipt.employee,
+          enrichedEmployee,
           selectedReceipt.data,
           signature || undefined
         );

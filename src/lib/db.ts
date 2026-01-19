@@ -1,5 +1,5 @@
 import { openDB, DBSchema, IDBPDatabase } from 'idb';
-import { Employee, Advance, SalaryPayment, Receipt } from '@/types';
+import { Employee, Advance, SalaryPayment, Receipt, Department, Position } from '@/types';
 
 // ============= Database Schema =============
 
@@ -39,10 +39,25 @@ interface PayrollDB extends DBSchema {
       'by-type': string;
     };
   };
+  departments: {
+    key: string;
+    value: Department;
+    indexes: {
+      'by-name': string;
+    };
+  };
+  positions: {
+    key: string;
+    value: Position;
+    indexes: {
+      'by-department': string;
+      'by-name': string;
+    };
+  };
 }
 
 const DB_NAME = 'payroll-manager';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 let dbInstance: IDBPDatabase<PayrollDB> | null = null;
 
@@ -52,7 +67,7 @@ export async function initDB(): Promise<IDBPDatabase<PayrollDB>> {
   if (dbInstance) return dbInstance;
 
   dbInstance = await openDB<PayrollDB>(DB_NAME, DB_VERSION, {
-    upgrade(db) {
+    upgrade(db, oldVersion, newVersion, transaction) {
       // Employees store
       if (!db.objectStoreNames.contains('employees')) {
         const employeeStore = db.createObjectStore('employees', { keyPath: 'id' });
@@ -82,6 +97,19 @@ export async function initDB(): Promise<IDBPDatabase<PayrollDB>> {
         const receiptStore = db.createObjectStore('receipts', { keyPath: 'id' });
         receiptStore.createIndex('by-employee', 'employeeId');
         receiptStore.createIndex('by-type', 'type');
+      }
+
+      // Departments store
+      if (!db.objectStoreNames.contains('departments')) {
+        const departmentStore = db.createObjectStore('departments', { keyPath: 'id' });
+        departmentStore.createIndex('by-name', 'name');
+      }
+
+      // Positions store
+      if (!db.objectStoreNames.contains('positions')) {
+        const positionStore = db.createObjectStore('positions', { keyPath: 'id' });
+        positionStore.createIndex('by-department', 'department');
+        positionStore.createIndex('by-name', 'name');
       }
     },
   });
@@ -317,7 +345,7 @@ export async function importData(data: {
 export async function clearAllData(): Promise<void> {
   const db = await initDB();
   const tx = db.transaction(
-    ['employees', 'advances', 'salaryPayments', 'receipts'],
+    ['employees', 'advances', 'salaryPayments', 'receipts', 'departments', 'positions'],
     'readwrite'
   );
   
@@ -326,7 +354,92 @@ export async function clearAllData(): Promise<void> {
     tx.objectStore('advances').clear(),
     tx.objectStore('salaryPayments').clear(),
     tx.objectStore('receipts').clear(),
+    tx.objectStore('departments').clear(),
+    tx.objectStore('positions').clear(),
   ]);
   
   await tx.done;
 }
+
+// ============= Department Operations =============
+
+export async function getAllDepartments(): Promise<Department[]> {
+  const db = await initDB();
+  return db.getAll('departments');
+}
+
+export async function getDepartment(id: string): Promise<Department | undefined> {
+  const db = await initDB();
+  return db.get('departments', id);
+}
+
+export async function getDepartmentByName(name: string): Promise<Department | undefined> {
+  const db = await initDB();
+  return db.getFromIndex('departments', 'by-name', name);
+}
+
+export async function addDepartment(department: Department): Promise<string> {
+  const db = await initDB();
+  await db.add('departments', department);
+  return department.id;
+}
+
+export async function updateDepartment(department: Department): Promise<void> {
+  const db = await initDB();
+  await db.put('departments', department);
+}
+
+export async function deleteDepartment(id: string): Promise<void> {
+  const db = await initDB();
+  await db.delete('departments', id);
+}
+
+// ============= Position Operations =============
+
+export async function getAllPositions(): Promise<Position[]> {
+  const db = await initDB();
+  return db.getAll('positions');
+}
+
+export async function getPosition(id: string): Promise<Position | undefined> {
+  const db = await initDB();
+  return db.get('positions', id);
+}
+
+export async function getPositionsByDepartment(department: string): Promise<Position[]> {
+  const db = await initDB();
+  return db.getAllFromIndex('positions', 'by-department', department);
+}
+
+export async function addPosition(position: Position): Promise<string> {
+  const db = await initDB();
+  await db.add('positions', position);
+  return position.id;
+}
+
+export async function updatePosition(position: Position): Promise<void> {
+  const db = await initDB();
+  await db.put('positions', position);
+}
+
+export async function deletePosition(id: string): Promise<void> {
+  const db = await initDB();
+  await db.delete('positions', id);
+}
+
+// ============= Database Reset =============
+
+export async function resetDatabase(): Promise<void> {
+  if (dbInstance) {
+    dbInstance.close();
+    dbInstance = null;
+  }
+  
+  // Delete the database
+  const indexedDB = window.indexedDB;
+  if (indexedDB) {
+    indexedDB.deleteDatabase(DB_NAME);
+  }
+}
+
+

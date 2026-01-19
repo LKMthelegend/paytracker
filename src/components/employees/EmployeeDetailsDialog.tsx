@@ -4,6 +4,9 @@ import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import { Phone, Mail, MapPin, Calendar, Building, Briefcase, CreditCard, TrendingUp, TrendingDown } from "lucide-react";
+import { useDepartments } from "@/hooks/useDepartments";
+import { usePositions } from "@/hooks/usePositions";
+import { getDepartmentName, getPositionName } from "@/lib/employeeUtils";
 
 interface EmployeeDetailsDialogProps {
   open: boolean;
@@ -12,6 +15,8 @@ interface EmployeeDetailsDialogProps {
 }
 
 export function EmployeeDetailsDialog({ open, onOpenChange, employee }: EmployeeDetailsDialogProps) {
+  const { data: departments = [] } = useDepartments();
+  const { data: positions = [] } = usePositions();
   if (!employee) return null;
 
   const statusInfo = EMPLOYEE_STATUS.find(s => s.value === employee.status);
@@ -92,11 +97,11 @@ export function EmployeeDetailsDialog({ open, onOpenChange, employee }: Employee
             <div className="grid gap-3">
               <div className="flex items-center gap-3">
                 <Building className="h-4 w-4 text-muted-foreground" />
-                <span>{employee.department}</span>
+                <span>{getDepartmentName(employee.department, departments)}</span>
               </div>
               <div className="flex items-center gap-3">
                 <Briefcase className="h-4 w-4 text-muted-foreground" />
-                <span>{employee.position}</span>
+                <span>{getPositionName(employee.position, positions)}</span>
               </div>
               <div className="flex items-center gap-3">
                 <Calendar className="h-4 w-4 text-muted-foreground" />
@@ -110,7 +115,7 @@ export function EmployeeDetailsDialog({ open, onOpenChange, employee }: Employee
           {/* Informations salariales */}
           <div className="space-y-3">
             <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">
-              Informations salariales
+              Salaire de base
             </h3>
             <div className="grid gap-3">
               <div className="flex items-center justify-between">
@@ -119,25 +124,6 @@ export function EmployeeDetailsDialog({ open, onOpenChange, employee }: Employee
                   <span>Salaire de base</span>
                 </div>
                 <span className="font-medium">{formatCurrency(employee.baseSalary)}</span>
-              </div>
-              <div className="flex items-center justify-between text-success">
-                <div className="flex items-center gap-3">
-                  <TrendingUp className="h-4 w-4" />
-                  <span>Primes</span>
-                </div>
-                <span className="font-medium">+{formatCurrency(employee.bonus)}</span>
-              </div>
-              <div className="flex items-center justify-between text-destructive">
-                <div className="flex items-center gap-3">
-                  <TrendingDown className="h-4 w-4" />
-                  <span>Déductions</span>
-                </div>
-                <span className="font-medium">-{formatCurrency(employee.deductions)}</span>
-              </div>
-              <Separator />
-              <div className="flex items-center justify-between text-lg font-bold">
-                <span>Salaire net</span>
-                <span className="text-primary">{formatCurrency(netSalary)}</span>
               </div>
             </div>
           </div>

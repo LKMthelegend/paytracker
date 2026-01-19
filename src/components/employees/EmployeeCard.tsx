@@ -5,6 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { MoreVertical, Pencil, Trash2, Eye, Phone, Mail, Calendar, Building, Briefcase } from "lucide-react";
+import { useDepartments } from "@/hooks/useDepartments";
+import { usePositions } from "@/hooks/usePositions";
+import { getDepartmentName, getPositionName } from "@/lib/employeeUtils";
 
 interface EmployeeCardProps {
   employee: Employee;
@@ -14,6 +17,8 @@ interface EmployeeCardProps {
 }
 
 export function EmployeeCard({ employee, onEdit, onDelete, onView }: EmployeeCardProps) {
+  const { data: departments = [] } = useDepartments();
+  const { data: positions = [] } = usePositions();
   const statusInfo = EMPLOYEE_STATUS.find(s => s.value === employee.status);
   const initials = `${employee.firstName[0]}${employee.lastName[0]}`.toUpperCase();
   const netSalary = employee.baseSalary + employee.bonus - employee.deductions;
@@ -80,13 +85,13 @@ export function EmployeeCard({ employee, onEdit, onDelete, onView }: EmployeeCar
             </div>
 
             <p className="text-sm text-muted-foreground mt-0.5">
-              {employee.matricule} • {employee.position}
+              {employee.matricule} • {getPositionName(employee.position, positions)}
             </p>
 
             <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-3 text-sm text-muted-foreground">
               <div className="flex items-center gap-1">
                 <Building className="h-3.5 w-3.5" />
-                <span>{employee.department}</span>
+                <span>{getDepartmentName(employee.department, departments)}</span>
               </div>
               <div className="flex items-center gap-1">
                 <Phone className="h-3.5 w-3.5" />

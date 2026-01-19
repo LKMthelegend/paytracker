@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { useEmployees } from "@/hooks/useEmployees";
 import { useAdvances } from "@/hooks/useAdvances";
 import { useSalaryPayments } from "@/hooks/useSalaryPayments";
+import { useDepartments } from "@/hooks/useDepartments";
 import { formatCurrency, getMonthName } from "@/types";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -13,6 +14,11 @@ export default function Dashboard() {
   const { data: employees = [], isLoading: loadingEmployees } = useEmployees();
   const { data: advances = [], isLoading: loadingAdvances } = useAdvances();
   const { data: payments = [], isLoading: loadingPayments } = useSalaryPayments();
+  const { data: departments = [] } = useDepartments();
+
+  const getDepartmentName = (deptId: string) => {
+    return departments.find(d => d.id === deptId)?.name || deptId;
+  };
 
   const currentMonth = new Date().getMonth() + 1;
   const currentYear = new Date().getFullYear();
@@ -133,7 +139,7 @@ export default function Dashboard() {
                   }, {} as Record<string, number>)
                 ).slice(0, 5).map(([dept, count]) => (
                   <div key={dept} className="flex items-center justify-between p-2 bg-muted/50 rounded-lg">
-                    <span className="text-sm">{dept}</span>
+                    <span className="text-sm">{getDepartmentName(dept)}</span>
                     <Badge>{count}</Badge>
                   </div>
                 ))}
