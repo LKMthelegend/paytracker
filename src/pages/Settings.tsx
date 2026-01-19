@@ -311,17 +311,6 @@ export default function Settings() {
             </CardContent>
           </Card>
 
-          {/* Départements */}
-          <DepartmentsManager
-            departments={departments}
-            onDepartmentsChange={setDepartments}
-          />
-
-          {/* Postes */}
-          <PositionsManager
-            positions={positions}
-            onPositionsChange={setPositions}
-          />
 
           {/* Actions */}
           <div className="flex justify-between">
