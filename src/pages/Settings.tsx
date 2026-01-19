@@ -13,6 +13,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useSettings } from "@/hooks/useSettings";
 import { useTheme } from "@/components/theme/ThemeProvider";
 import { LogoUploader } from "@/components/settings/LogoUploader";
+import { DepartmentsManager, DEFAULT_DEPARTMENTS } from "@/components/settings/DepartmentsManager";
+import { PositionsManager, DEFAULT_POSITIONS } from "@/components/settings/PositionsManager";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 const settingsSchema = z.object({
@@ -49,6 +51,8 @@ export default function Settings() {
   const { theme, setTheme } = useTheme();
   const [isSaved, setIsSaved] = useState(false);
   const [logo, setLogo] = useState(settings.companyLogo || "");
+  const [departments, setDepartments] = useState<string[]>(settings.departments || DEFAULT_DEPARTMENTS);
+  const [positions, setPositions] = useState<string[]>(settings.positions || DEFAULT_POSITIONS);
 
   const form = useForm<SettingsFormData>({
     resolver: zodResolver(settingsSchema),
@@ -63,7 +67,7 @@ export default function Settings() {
   });
 
   const handleSubmit = (data: SettingsFormData) => {
-    updateSettings({ ...data, companyLogo: logo });
+    updateSettings({ ...data, companyLogo: logo, departments, positions });
     setIsSaved(true);
     setTimeout(() => setIsSaved(false), 2000);
     toast({
@@ -84,6 +88,8 @@ export default function Settings() {
   const handleReset = () => {
     resetSettings();
     setLogo("");
+    setDepartments(DEFAULT_DEPARTMENTS);
+    setPositions(DEFAULT_POSITIONS);
     form.reset({
       companyName: "VOTRE ENTREPRISE",
       companyAddress: "Adresse de l'entreprise",
@@ -304,6 +310,18 @@ export default function Settings() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Départements */}
+          <DepartmentsManager
+            departments={departments}
+            onDepartmentsChange={setDepartments}
+          />
+
+          {/* Postes */}
+          <PositionsManager
+            positions={positions}
+            onPositionsChange={setPositions}
+          />
 
           {/* Actions */}
           <div className="flex justify-between">

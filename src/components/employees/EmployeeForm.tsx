@@ -10,8 +10,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Employee, EmployeeFormData, generateId, generateMatricule, formatCurrency } from "@/types";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+<<<<<<< HEAD
 import { useDepartments } from "@/hooks/useDepartments";
 import { usePositions, usePositionsByDepartment } from "@/hooks/usePositions";
+=======
+import { getDepartments, getPositions } from "@/lib/appSettings";
+>>>>>>> 71ddfc983ff632b8534cdb101170bc95c88ebf79
 
 const employeeSchema = z.object({
   matricule: z.string().min(1, "Le matricule est requis"),
@@ -40,6 +44,8 @@ interface EmployeeFormProps {
 
 export function EmployeeForm({ open, onOpenChange, onSubmit, employee, isLoading }: EmployeeFormProps) {
   const isEditing = !!employee;
+  const departments = getDepartments();
+  const positions = getPositions();
 
   const form = useForm<EmployeeFormData>({
     resolver: zodResolver(employeeSchema),
@@ -281,7 +287,11 @@ export function EmployeeForm({ open, onOpenChange, onSubmit, employee, isLoading
                         </FormControl>
                         <SelectContent>
                           {departments.map(dept => (
+<<<<<<< HEAD
                             <SelectItem key={dept.id} value={dept.id}>{dept.name}</SelectItem>
+=======
+                            <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+>>>>>>> 71ddfc983ff632b8534cdb101170bc95c88ebf79
                           ))}
                         </SelectContent>
                       </Select>
@@ -303,7 +313,11 @@ export function EmployeeForm({ open, onOpenChange, onSubmit, employee, isLoading
                         </FormControl>
                         <SelectContent>
                           {positions.map(pos => (
+<<<<<<< HEAD
                             <SelectItem key={pos.id} value={pos.id}>{pos.name}</SelectItem>
+=======
+                            <SelectItem key={pos} value={pos}>{pos}</SelectItem>
+>>>>>>> 71ddfc983ff632b8534cdb101170bc95c88ebf79
                           ))}
                         </SelectContent>
                       </Select>

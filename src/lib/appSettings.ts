@@ -8,7 +8,39 @@ export interface AppSettings {
   currency: string;
   currencySymbol: string;
   locale: string;
+  departments: string[];
+  positions: string[];
 }
+
+const DEFAULT_DEPARTMENTS = [
+  'Direction',
+  'Ressources Humaines',
+  'Comptabilité',
+  'Marketing',
+  'Commercial',
+  'Production',
+  'Logistique',
+  'Informatique',
+  'Juridique',
+  'Maintenance',
+  'Qualité',
+  'Autre'
+];
+
+const DEFAULT_POSITIONS = [
+  'Directeur Général',
+  'Directeur',
+  'Chef de Département',
+  "Chef d'Équipe",
+  'Responsable',
+  'Superviseur',
+  'Technicien',
+  'Agent',
+  'Assistant',
+  'Stagiaire',
+  'Consultant',
+  'Autre'
+];
 
 const DEFAULT_SETTINGS: AppSettings = {
   companyName: "VOTRE ENTREPRISE",
@@ -18,6 +50,8 @@ const DEFAULT_SETTINGS: AppSettings = {
   currency: "MGA",
   currencySymbol: "Ar",
   locale: "fr-MG",
+  departments: DEFAULT_DEPARTMENTS,
+  positions: DEFAULT_POSITIONS,
 };
 
 const SETTINGS_KEY = 'payroll_app_settings';
@@ -51,3 +85,13 @@ export function formatCurrencyWithSettings(amount: number): string {
     maximumFractionDigits: 0,
   }).format(amount) + ' ' + settings.currencySymbol;
 }
+
+export function getDepartments(): string[] {
+  return getSettings().departments;
+}
+
+export function getPositions(): string[] {
+  return getSettings().positions;
+}
+
+export { DEFAULT_DEPARTMENTS, DEFAULT_POSITIONS };
