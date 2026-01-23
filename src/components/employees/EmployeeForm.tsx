@@ -80,10 +80,25 @@ export function EmployeeForm({ open, onOpenChange, onSubmit, employee, isLoading
   const selectedDept = form.watch("department");
   const { data: positions = [] } = usePositionsByDepartment(selectedDept);
 
-  // Reset form when dialog closes or employee changes
+  // Reset form when dialog opens or employee changes
   useEffect(() => {
-    if (!open) {
-      form.reset();
+    if (open && employee) {
+      form.reset({
+        matricule: employee.matricule,
+        firstName: employee.firstName,
+        lastName: employee.lastName,
+        email: employee.email,
+        phone: employee.phone,
+        address: employee.address,
+        dateOfBirth: employee.dateOfBirth,
+        hireDate: employee.hireDate,
+        position: employee.position,
+        department: employee.department,
+        baseSalary: employee.baseSalary,
+        bonus: employee.bonus,
+        deductions: employee.deductions,
+        status: employee.status,
+      });
     } else if (open && !employee) {
       form.reset({
         matricule: generateMatricule(),
